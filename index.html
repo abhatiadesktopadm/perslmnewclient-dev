@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogicMonitor Client Setup</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+
+        azure_url = "lmnewclient-dev.azurewebsites.net"
+        local_url = "http://127.0.0.1:5001"
+
+        $(document).ready(function () {
+
+
+            // Fetch client data from backend
+            $.ajax({
+                url: '{{ url }}/get-companies', // The Flask route
+                type: 'GET',
+                dataType: 'json', // Data type expected from server
+                success: function (data) {
+                    var select = $('#client-dropdown');
+                    data.forEach(function (client) {
+                        select.append($('<option></option>').val(client.id).html(client.identifier));
+                    });
+                },
+                error: function (error) {
+                    console.log('Error fetching clients:', error);
+                }
+            });
+
+            $('#client-dropdown').change(function () {
+                var clientId = $(this).val(); // Get the selected client ID
+
+                if (clientId) {
+                    $('#locations-dropdown').empty(); // Clear existing options
+
+                    $.ajax({
+                        url: '{{ url }}/get-locations?clientId=' + clientId,  // Adjust this URL to match your Flask app's URL structure
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function (data) {
+                            var select = $('#locations-dropdown');
+                            data.forEach(function (location) {
+                                select.append($('<option></option>')
+                                    .val(location.id)
+                                    .text(`${location.name} - ${location.city}`)
+                                    .attr('data-address', location.addressLine1)
+                                    .attr('data-city', location.city)
+                                    .attr('data-state', location.stateReference.identifier));
+                            });
+                        },
+                        error: function (error) {
+                            console.log('Error fetching locations:', error);
+                        }
+                    });
+                } else {
+                    $('#locations-dropdown').empty();
+                }
+            });
+
+
+
+            // Handle form submission
+            $('#client-form').submit(function (event) {
+                event.preventDefault();
+                var selectedClientId = $('#client-dropdown').val(); // Get the selected client ID from the dropdown
+                var selectedClientName = $('#client-dropdown option:selected').text(); // Get the selected client name from the dropdown
+
+
+                if (!selectedClientId) {
+                    alert('Please select a client from the dropdown');
+                    return;
+                }
+
+                // Gather selected locations from the dropdown
+                var selectedLocations = $('#locations-dropdown').find(':selected').map(function () {
+                    return $(this).text(); // Gets the display text, which includes the name - city
+                }).get(); // Convert to array
+
+                // Gather selected location IDs from the dropdown
+                var selectedLocationIds = $('#locations-dropdown').find(':selected').map(function () {
+                    return $(this).data('id'); // Assuming each option has a data-id attribute with the location ID
+                }).get(); // Convert to array
+
+                var locationDetails = $('#locations-dropdown').find(':selected').map(function () {
+                    return {
+                        id: $(this).val(),
+                        address: $(this).data('address'),
+                        city: $(this).data('city'),
+                        state: $(this).data('state')
+                    };
+                }).get();
+
+
+                var selectedFolders = [];
+                $('input[name="folders"]:checked').each(function () {
+                    selectedFolders.push($(this).val());
+                });
+
+                $.ajax({
+                    type: 'POST',
+                    url: '{{ url }}/create-client-folder',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        clientName: selectedClientName,
+                        clientId: selectedClientId,
+                        selectedFolders: selectedFolders,
+                        locations: selectedLocations,
+                        loc_ids: selectedLocationIds,
+                        loc_details: locationDetails
+                    }),
+                    success: function (response) {
+                        console.log('Server response:', response);
+                        $('#confirmation-message').text('Submission successful!').show();
+
+                        $('#client-form')[0].reset();
+                    },
+                    error: function (error) {
+                        console.error('Error:', error);
+                        $('#confirmation-message').text('An error occurred. Please try again.').show();
+                    }
+                });
+            });
+        });
+
+
+    </script>
+
+</head>
+<body>
+
+    <h1>LogicMonitor New Client Folder Setup</h1>
+
+    <label for="client-dropdown">Select a Client:</label>
+    <select id="client-dropdown" onchange="">
+        <option value="">--Please choose an option--</option>
+    </select>
+
+    <br>
+    <br>
+
+    <label for="locations-dropdown">Select Locations (Press CTRL to select multiple):</label>
+    <select id="locations-dropdown" multiple>
+        <!-- Options will be populated based on the selected client -->
+    </select>
+
+
+    <form id="client-form">
+
+        <p>Select which folders should be included:</p>
+        <input type="checkbox" id="collectors" name="folders" value="_Collectors" checked>
+        <label for="collectors">_Collectors</label><br>
+
+        <input type="checkbox" id="domain-controllers" name="folders" value="_Domain Controllers" checked>
+        <label for="domain-controllers">_Domain Controllers</label><br>
+
+        <input type="checkbox" id="firewalls" name="folders" value="_Firewalls" checked>
+        <label for="firewalls">_Firewalls</label><br>
+
+        <input type="checkbox" id="routers" name="folders" value="_Routers" checked>
+        <label for="routers">_Routers</label><br>
+
+        <input type="checkbox" id="switches" name="folders" value="_Switches" checked>
+        <label for="switches">_Switches</label><br>
+
+        <input type="checkbox" id="wireless" name="folders" value="_Wireless" checked>
+        <label for="wireless">_Wireless</label><br>
+
+        <input type="checkbox" id="disabled" name="folders" value="_Disabled" checked>
+        <label for="disabled">_Disabled</label><br>
+
+
+        <input type="submit" value="Submit">
+    </form>
+
+    <div id="confirmation-message" style="display:none;"></div>
+
+</body>
+</html>
