@@ -286,7 +286,7 @@ def serve_html_page():
     CW_DOMAIN           = GetConfigValue(CONFIGDATA,'ConnectWise','domain','https://api-na.myconnectwise.net')
     CW_EPOINT           = GetConfigValue(CONFIGDATA,'ConnectWise','apiVersion','/v4_6_release/apis/3.0')
     CW_COMPANY		  = GetConfigValue(CONFIGDATA,'ConnectWise','company','align')
-    CW_CLIENTIDSECRET   = GetConfigValue(CONFIGDATA,'ConnectWise','clientid-secret')
+    CW_CLIENTIDSECRET   = GetConfigValue(CONFIGDATA,'ConnectWise','clientId-secret')
     CW_USERNAMESECRET  = GetConfigValue(CONFIGDATA,'ConnectWise','username-secret')
     CW_PASSWORDSECRET = GetConfigValue(CONFIGDATA,'ConnectWise','password-secret')
     LM_IDSECRET = GetConfigValue(CONFIGDATA, 'LogicMonitor', 'access_id-secret')
