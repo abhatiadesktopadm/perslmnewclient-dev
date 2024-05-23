@@ -38,6 +38,8 @@
                 if (clientId) {
                     $('#locations-dropdown').empty(); // Clear existing options
 
+                    alarm(clientId)
+
                     $.ajax({
                         url: '{{ url }}/get-locations?clientId=' + clientId,  // Adjust this URL to match your Flask app's URL structure
                         type: 'GET',

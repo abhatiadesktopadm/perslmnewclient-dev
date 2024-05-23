@@ -462,29 +462,31 @@ def get_locations():
 
 @app.route('/get-companies', methods=['GET'])
 def get_companies():
-    
-    LogOutput("\n\nGET COMPANIES\n\n")
-    
-    LogOutput(f'\\nCW_COMPANY: {CW_COMPANY}')
-    
+    LogOutput("Entering get-companies route.")
     api_url = f'{CW_URL}/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
-    
     credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
-    
     headers = {
         'Authorization': f'Basic {credentials}',
         'clientId': CW_CLIENTID
     }
-    
+    LogOutput(f"Prepared headers: {headers}")
+    LogOutput(f"Calling API URL: {api_url}")
     try:
         response = requests.get(api_url, headers=headers)
+        LogOutput(f"API response status: {response.status_code}")
         if response.status_code == 200:
+            LogOutput("Successfully fetched companies.")
             companies = response.json()
             return jsonify(companies), 200
         else:
-            return jsonify({'error': 'Failed to fetch companies'}), response.status_code
+            error_message = f"Failed to fetch companies with status {response.status_code}: {response.text}"
+            LogOutput(error_message)
+            return jsonify({'error': 'Failed to fetch companies', 'details': response.text}), response.status_code
     except Exception as e:
+        error_message = f"Exception during API call: {str(e)}"
+        LogOutput(error_message)
         return jsonify({'error': str(e)}), 500
+
 
 # if __name__ == '__main__':
 #   app.run(debug=True, port=5001)
