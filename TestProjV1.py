@@ -104,6 +104,8 @@ def LogOutput(message, level = 0, debug = False):
     elif level == 3 and (debug or DEBUG): # Debug
         logger.info(f"[{LOGSEQUENCE:{0}{4}}] DEBG: [{VERSION}]: {message}")
         
+    LOGSEQUENCE = LOGSEQUENCE + 1
+        
 LogOutput("\n\nPROGRAM STARTED - DEFINED LOGOUTPUT\n\n")
 
 @app.after_request
