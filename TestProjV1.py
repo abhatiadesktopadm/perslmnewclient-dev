@@ -1,7 +1,7 @@
 """
 Author: Arnav Bhatia
 Company  : Align Communications
-Version  : 1.3.10
+Version  : 1.3.12
 Modified : 2024-04-17
 Created  : 2023-11-10
 
@@ -51,7 +51,7 @@ logger.addHandler(loghandler)
 
 run_local = False
 DEBUG = True
-VERSION = '1.3.10'
+VERSION = '1.3.12'
 
 # Set our logging level
 if DEBUG:
@@ -106,7 +106,7 @@ def LogOutput(message, level = 0, debug = False):
         
     LOGSEQUENCE = LOGSEQUENCE + 1
         
-LogOutput("\n\nPROGRAM STARTED - DEFINED LOGOUTPUT\n\n")
+LogOutput("PROGRAM STARTED - DEFINED LOGOUTPUT")
 
 @app.after_request
 def set_cache_control(response):
@@ -220,25 +220,25 @@ def create_location_folder(api_instance, parent_id, name):
 @app.route('/')
 def serve_html_page():
     
-    LogOutput("\n\nENTERED ENTRY POINT\n\n")
+    LogOutput("ENTERED ENTRY POINT")
     
     # Open the config file
     if path.exists('config.json'):
-        LogOutput("\n\nPATH EXISTS")
+        LogOutput("PATH EXISTS")
         CONFIGDATA = json.load(open('config.json'))
     else:
         CONFIGDATA = None
         
     AKV_VAL = GetConfigValue(CONFIGDATA, 'AzureKeyVault', None)
         
-    LogOutput(f'\n\nAZUREKEYVAULT FROM CONFIGDATA: {AKV_VAL}')
+    LogOutput(f'AZUREKEYVAULT FROM CONFIGDATA: {AKV_VAL}')
     
     with open('config.json', 'r') as f:
         config = json.load(f)
     
     AKV_VAL2 = config['AzureKeyVault']
     
-    LogOutput(f'\n\nAZUREKEYVAULT NOT USING GETCONFIGVALUE: {AKV_VAL2}')
+    LogOutput(f'AZUREKEYVAULT NOT USING GETCONFIGVALUE: {AKV_VAL2}')
  
     global DEBUG
     DEBUG = GetConfigValue(CONFIGDATA,'DEBUG',default=False)
@@ -268,7 +268,7 @@ def serve_html_page():
     LogOutput("Getting access to keys...")
     AZUREKEYVAULT = GetConfigValue(CONFIGDATA,'AzureKeyVault')
     
-    LogOutput(f'\n\nAZUREKEYVAULT: {AZUREKEYVAULT}', 3)
+    LogOutput(f'AZUREKEYVAULT: {AZUREKEYVAULT}', 3)
 
     if AZUREKEYVAULT:
         KV_URL    = f"https://{AZUREKEYVAULT}.vault.azure.net"
@@ -277,7 +277,7 @@ def serve_html_page():
         KV_URL    = None    
         KV_CLIENT = None
         
-    LogOutput(f'\n\nKV_URL: {KV_URL} - - - KV_CLIENT: {KV_CLIENT}', 3)
+    LogOutput(f'KV_URL: {KV_URL} - - - KV_CLIENT: {KV_CLIENT}', 3)
     
     global CW_DOMAIN
     global CW_EPOINT
@@ -342,7 +342,7 @@ def serve_html_page():
     api_instance = logicmonitor_sdk.LMApi(logicmonitor_sdk.ApiClient(lmconfig))
             
 
-    LogOutput(f'\n\nCW CREDENTIALS: {CW_USERNAME} - {CW_PASSWORD} - {CW_CLIENTID}\n\n', 3)
+    LogOutput(f'CW CREDENTIALS: {CW_USERNAME} - {CW_PASSWORD} - {CW_CLIENTID}', 3)
 
     
 
@@ -423,7 +423,7 @@ def create_client_folder_route():
 @app.route('/get-locations', methods=['GET'])
 def get_locations():
     # Logging entry into the function
-    LogOutput("\nEntering the get-locations route.")
+    LogOutput("Entering the get-locations route.")
 
     # Retrieve 'clientId' from query parameters and log the value
     client_id = request.args.get('clientId')
