@@ -1,7 +1,7 @@
 """
 Author: Arnav Bhatia
 Company  : Align Communications
-Version  : 1.3.12
+Version  : 1.3.13
 Modified : 2024-04-17
 Created  : 2023-11-10
 
@@ -33,6 +33,7 @@ import logging
 from os import path
 #from azure.identity import DefaultAzureCredential
 
+from requests import session
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS, cross_origin
 
@@ -51,7 +52,7 @@ logger.addHandler(loghandler)
 
 run_local = False
 DEBUG = True
-VERSION = '1.3.12'
+VERSION = '1.3.13'
 
 # Set our logging level
 if DEBUG:
@@ -469,9 +470,9 @@ def get_companies():
     
     api_url = f'{CW_URL}/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
     
-    credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
+    # credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
+    
     headers = {
-        'Authorization': f'Basic {credentials}',
         'clientId': CW_CLIENTID
     }
     
@@ -479,7 +480,7 @@ def get_companies():
     LogOutput(f"Calling API URL: {api_url}")
     
     try:
-        response = requests.get(api_url, headers=headers)
+        response = session.get(api_url, auth=(f"{CW_COMPANY}+{CW_USERNAME}",CW_PASSWORD), headers = headers)
         
         LogOutput(f"API response status: {response.status_code}")
         if response.status_code == 200:
