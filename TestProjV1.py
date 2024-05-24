@@ -473,16 +473,16 @@ def get_companies():
     # credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
     
     headers = {
-        'content-type': 'application/json',
-        'clientId': CW_CLIENTID,
+        'Authorization': 'Basic ' + base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode()).decode('utf-8'),
+        'Content-Type': 'application/json',
+        'clientId': CW_CLIENTID
     }
     
     LogOutput(f"Prepared headers: {headers}")
     LogOutput(f"Calling API URL: {api_url}")
     
     try:
-        response = requests.get(api_url, auth=(f"{CW_COMPANY}+{CW_USERNAME}",CW_PASSWORD), headers = headers)
-        
+        response = requests.get(api_url, headers=headers)
         LogOutput(f"API response status: {response.status_code}")
         if response.status_code == 200:
             LogOutput("Successfully fetched companies.")
