@@ -436,7 +436,7 @@ def get_locations():
     LogOutput(f"Constructed URL: {url}")
 
     # Encode the credentials for the API request
-    credentials = base64.b64encode(f"{CW_USERNAME}:{CW_PASSWORD}".encode()).decode('utf-8')
+    credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode()).decode('utf-8')
     headers = {
         'Authorization': f'Basic {credentials}',
         'clientId': CW_CLIENTID
@@ -462,17 +462,23 @@ def get_locations():
 
 @app.route('/get-companies', methods=['GET'])
 def get_companies():
+    
     LogOutput("Entering get-companies route.")
+    
     api_url = f'{CW_URL}/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
+    
     credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
     headers = {
         'Authorization': f'Basic {credentials}',
         'clientId': CW_CLIENTID
     }
+    
     LogOutput(f"Prepared headers: {headers}")
     LogOutput(f"Calling API URL: {api_url}")
+    
     try:
         response = requests.get(api_url, headers=headers)
+        
         LogOutput(f"API response status: {response.status_code}")
         if response.status_code == 200:
             LogOutput("Successfully fetched companies.")
