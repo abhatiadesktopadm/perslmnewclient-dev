@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'lmnewclient-dev'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_6AB7C355F1034517A7C14B89F340DDDC }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_2D79033C699B42FCA48653B1536A6B6A }}
