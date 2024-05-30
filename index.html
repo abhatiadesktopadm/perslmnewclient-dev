@@ -10,13 +10,15 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
 
+        azure_url = "lmnewclient-dev.azurewebsites.net"
+        local_url = "http://127.0.0.1:5001"
 
         $(document).ready(function () {
 
 
             // Fetch client data from backend
             $.ajax({
-                url: '{{ url }}/get-companies', // The Flask route
+                url: 'http://127.0.0.1:5001/get-companies', // The Flask route 
                 type: 'GET',
                 dataType: 'json', // Data type expected from server
                 success: function (data) {
@@ -36,21 +38,14 @@
                 if (clientId) {
                     $('#locations-dropdown').empty(); // Clear existing options
 
-                    alarm(clientId)
-
                     $.ajax({
-                        url: '{{ url }}/get-locations?clientId=' + clientId,  // Adjust this URL to match your Flask app's URL structure
+                        url: `http://127.0.0.1:5001/get-locations?clientId=${clientId}`,  // Adjust this URL to match your Flask app's URL structure
                         type: 'GET',
                         dataType: 'json',
                         success: function (data) {
                             var select = $('#locations-dropdown');
                             data.forEach(function (location) {
-                                select.append($('<option></option>')
-                                    .val(location.id)
-                                    .text(`${location.name} - ${location.city}`)
-                                    .attr('data-address', location.addressLine1)
-                                    .attr('data-city', location.city)
-                                    .attr('data-state', location.stateReference.identifier));
+                                select.append($('<option></option>').val(location.id).html(`${location.name} - ${location.city}`));
                             });
                         },
                         error: function (error) {
@@ -70,7 +65,7 @@
                 var selectedClientId = $('#client-dropdown').val(); // Get the selected client ID from the dropdown
                 var selectedClientName = $('#client-dropdown option:selected').text(); // Get the selected client name from the dropdown
 
-
+                
                 if (!selectedClientId) {
                     alert('Please select a client from the dropdown');
                     return;
@@ -81,20 +76,6 @@
                     return $(this).text(); // Gets the display text, which includes the name - city
                 }).get(); // Convert to array
 
-                // Gather selected location IDs from the dropdown
-                var selectedLocationIds = $('#locations-dropdown').find(':selected').map(function () {
-                    return $(this).data('id'); // Assuming each option has a data-id attribute with the location ID
-                }).get(); // Convert to array
-
-                var locationDetails = $('#locations-dropdown').find(':selected').map(function () {
-                    return {
-                        id: $(this).val(),
-                        address: $(this).data('address'),
-                        city: $(this).data('city'),
-                        state: $(this).data('state')
-                    };
-                }).get();
-
 
                 var selectedFolders = [];
                 $('input[name="folders"]:checked').each(function () {
@@ -103,15 +84,13 @@
 
                 $.ajax({
                     type: 'POST',
-                    url: '{{ url }}/create-client-folder',
+                    url: 'http://127.0.0.1:5001/create-client-folder',
                     contentType: 'application/json',
                     data: JSON.stringify({
                         clientName: selectedClientName,
                         clientId: selectedClientId,
                         selectedFolders: selectedFolders,
-                        locations: selectedLocations,
-                        loc_ids: selectedLocationIds,
-                        loc_details: locationDetails
+                        locations: selectedLocations
                     }),
                     success: function (response) {
                         console.log('Server response:', response);
@@ -174,7 +153,7 @@
         <label for="disabled">_Disabled</label><br>
 
 
-        <input type="submit" value="Submit">
+        <input type="submit" value="Submit" >
     </form>
 
     <div id="confirmation-message" style="display:none;"></div>
