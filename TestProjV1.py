@@ -429,15 +429,17 @@ def get_locations():
     
     # ConnectWise API URL for fetching locations
     url = f'{CW_DOMAIN}{CW_EPOINT}/company/companies/{client_id}/sites?fields=id,name,city,stateReference/identifier,country/name&conditions=inactiveFlag=false'
-    
-    credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
+    username = 'align+r7wyECnfZ3BaZXtd'
+    password = 'bEpKrPNKppqOApnP'    
+
+    credentials = base64.b64encode(f"align+{username}:{password}".encode('utf-8')).decode('utf-8')
     
     LogOutput(f'\n\n{CW_DOMAIN} - {CW_EPOINT}\n\n')
     LogOutput(f'\n\n{url}\n\n')
 
     headers = {
         'Authorization': f'Basic {credentials}',
-        'clientId': CW_CLIENTID
+        'clientId': '8acd3927-2171-4fd9-8ebb-c88c7d387d56'
         # Add any other necessary headers here
     }
     
@@ -466,11 +468,14 @@ def get_companies():
     
     api_url = f'{CW_URL}/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
     
-    credentials = base64.b64encode(f"{CW_COMPANY}+{CW_USERNAME}:{CW_PASSWORD}".encode('utf-8')).decode('utf-8')
+    username = 'align+r7wyECnfZ3BaZXtd'
+    password = 'bEpKrPNKppqOApnP'
+    
+    credentials = base64.b64encode(f"align+{username}:{password}".encode('utf-8')).decode('utf-8')
     
     headers = {
         'Authorization': f'Basic {credentials}',
-        'clientId': CW_CLIENTID
+        'clientId': '8acd3927-2171-4fd9-8ebb-c88c7d387d56'
     }
     
     try:
