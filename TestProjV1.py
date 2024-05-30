@@ -428,7 +428,7 @@ def get_locations():
         return jsonify({'error': 'Client ID is required'}), 400
     
     # ConnectWise API URL for fetching locations
-    url = f'{CW_DOMAIN}{CW_EPOINT}/company/companies/{client_id}/sites?fields=id,name,city,stateReference/identifier,country/name&conditions=inactiveFlag=false'
+    url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies/{client_id}/sites?fields=id,name,city,stateReference/identifier,country/name&conditions=inactiveFlag=false'
     username = 'align+r7wyECnfZ3BaZXtd'
     password = 'bEpKrPNKppqOApnP'    
 
@@ -466,7 +466,7 @@ def get_companies():
     
     LogOutput(f'\\nCW_COMPANY: {CW_COMPANY}')
     
-    api_url = f'{CW_URL}/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
+    api_url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
     
     username = 'align+r7wyECnfZ3BaZXtd'
     password = 'bEpKrPNKppqOApnP'
