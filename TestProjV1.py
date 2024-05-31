@@ -1,3 +1,25 @@
+"""
+Author: Arnav Bhatia
+Company  : Align Communications
+Version  : 1.3.15
+Modified : 2024-05-31
+Created  : 2023-11-10
+
+The Python backend is designed to interact with LogicMonitor and ConnectWise APIs, facilitating the automation 
+of client and location setup within LogicMonitor based on data retrieved from ConnectWise. It initializes 
+the Flask application, sets up CORS, and configures the LogicMonitor SDK. Through endpoints like 
+/get-companies and /get-locations, it fetches data from ConnectWise, and with /create-client-folder, 
+it processes user selections to create and configure folders in LogicMonitor. Utility functions within 
+the backend check for existing folders to prevent duplication and handle the creation of client and 
+location folders, including setting specific properties like company ID, location ID, and site addresses.
+
+The HTML frontend provides a user-friendly interface, allowing users to select clients and locations from 
+dynamically loaded dropdown menus, and choose which folders to include. On form submission, the selections are 
+sent back to the Flask server, which then carries out the LogicMonitor configuration. This setup streamlines 
+the organizational process, leveraging ConnectWise data to efficiently structure and annotate elements 
+within LogicMonitor.
+"""
+
 import sys
 import requests
 import logicmonitor_sdk
@@ -75,10 +97,14 @@ def create_client_folder(api_instance, clients_folder_id, client_name):
     except ApiException as e:
         print(f"Exception when creating client folder: {e}")
         return None
+    
 def check_if_group_exists(api_client, parent_id, group_name):
+    
     try:
+        
         device_groups = api_client.get_device_group_by_id(parent_id)
         print(device_groups)        
+        
         for group in device_groups.sub_groups:
             if group.name == group_name:
                 return True
@@ -108,10 +134,15 @@ def create_folder(api_instance, parent_id, name, query, disable_alerting=False, 
         print(f"Group '{name}' created. ID: {api_response.id}")
     except ApiException as e:
         print("Exception when calling add_device_group: %s\n" % e)
+        
 def create_device_groups(parent_device_group, selected_groups):
+    
     path = parent_device_group.full_path
+    
     for name, query_func, enable_netflow in group_settings:
+        
         if name in selected_groups:
+            
             query = query_func(path)
             create_folder(api_instance, parent_device_group.id, name, query, enable_netflow)
             
@@ -126,11 +157,15 @@ def create_location_folder(api_instance, parent_id, name):
                     parent_id=parent_id, 
         )
         api_response = api_instance.add_device_group(new_group)
+        
         location_id = api_response.id
+        
+        loc_id_prop = logicmonitor_sdk.models.EntityProperty(
+                name= "location_id",
+                value= location_id
+            )
 
-
-
-        api_instance.add_device_group_property(location_id, location_id)
+        api_instance.add_device_group_property(location_id, loc_id_prop)
 
         # Create sub-groups within the location group
         sub_groups = ["Network", "Power", "Services"]    
