@@ -9,11 +9,18 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
+
+        azure_url = "lmnewclient-dev.azurewebsites.net"
+        local_url = "http://127.0.0.1:5001"
+
         $(document).ready(function () {
+
+
+            // Fetch client data from backend
             $.ajax({
-                url: '/get-companies',
+                url: '{{ url }}/get-companies', // The Flask route
                 type: 'GET',
-                dataType: 'json',
+                dataType: 'json', // Data type expected from server
                 success: function (data) {
                     var select = $('#client-dropdown');
                     data.forEach(function (client) {
@@ -26,11 +33,13 @@
             });
 
             $('#client-dropdown').change(function () {
-                var clientId = $(this).val();
+                var clientId = $(this).val(); // Get the selected client ID
+
                 if (clientId) {
-                    $('#locations-dropdown').empty();
+                    $('#locations-dropdown').empty(); // Clear existing options
+
                     $.ajax({
-                        url: '/get-locations?clientId=' + clientId,
+                        url: `{{ url }}/get-locations?clientId=${clientId}`,  // Adjust this URL to match your Flask app's URL structure
                         type: 'GET',
                         dataType: 'json',
                         success: function (data) {
@@ -53,23 +62,29 @@
                 }
             });
 
+
+
+            // Handle form submission
             $('#client-form').submit(function (event) {
                 event.preventDefault();
-                var selectedClientId = $('#client-dropdown').val();
-                var selectedClientName = $('#client-dropdown option:selected').text();
+                var selectedClientId = $('#client-dropdown').val(); // Get the selected client ID from the dropdown
+                var selectedClientName = $('#client-dropdown option:selected').text(); // Get the selected client name from the dropdown
+
 
                 if (!selectedClientId) {
                     alert('Please select a client from the dropdown');
                     return;
                 }
 
+                // Gather selected locations from the dropdown
                 var selectedLocations = $('#locations-dropdown').find(':selected').map(function () {
-                    return $(this).text();
-                }).get();
+                    return $(this).text(); // Gets the display text, which includes the name - city
+                }).get(); // Convert to array
 
+                // Gather selected location IDs from the dropdown
                 var selectedLocationIds = $('#locations-dropdown').find(':selected').map(function () {
-                    return $(this).val();
-                }).get();
+                    return $(this).data('id'); // Assuming each option has a data-id attribute with the location ID
+                }).get(); // Convert to array
 
                 var locationDetails = $('#locations-dropdown').find(':selected').map(function () {
                     return {
@@ -80,6 +95,7 @@
                     };
                 }).get();
 
+
                 var selectedFolders = [];
                 $('input[name="folders"]:checked').each(function () {
                     selectedFolders.push($(this).val());
@@ -87,7 +103,7 @@
 
                 $.ajax({
                     type: 'POST',
-                    url: '/create-client-folder',
+                    url: '{{ url }}/create-client-folder',
                     contentType: 'application/json',
                     data: JSON.stringify({
                         clientName: selectedClientName,
@@ -100,6 +116,7 @@
                     success: function (response) {
                         console.log('Server response:', response);
                         $('#confirmation-message').text('Submission successful!').show();
+
                         $('#client-form')[0].reset();
                     },
                     error: function (error) {
@@ -109,8 +126,9 @@
                 });
             });
         });
-    </script>
 
+
+    </script>
 
 </head>
 <body>
