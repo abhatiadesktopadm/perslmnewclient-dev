@@ -10,8 +10,6 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
 
-        azure_url = "lmnewclient-dev.azurewebsites.net"
-        local_url = "http://127.0.0.1:5001"
 
         $(document).ready(function () {
 
@@ -38,8 +36,10 @@
                 if (clientId) {
                     $('#locations-dropdown').empty(); // Clear existing options
 
+                    alarm(clientId)
+
                     $.ajax({
-                        url: `{{ url }}/get-locations?clientId=${clientId}`,  // Adjust this URL to match your Flask app's URL structure
+                        url: '{{ url }}/get-locations?clientId=' + clientId,  // Adjust this URL to match your Flask app's URL structure
                         type: 'GET',
                         dataType: 'json',
                         success: function (data) {

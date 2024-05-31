@@ -1,8 +1,8 @@
 """
 Author: Arnav Bhatia
 Company  : Align Communications
-Version  : 1.3.4
-Modified : 2024-03-28
+Version  : 1.3.10
+Modified : 2024-04-17
 Created  : 2023-11-10
 
 The Python backend is designed to interact with LogicMonitor and ConnectWise APIs, facilitating the automation 
@@ -21,6 +21,8 @@ within LogicMonitor.
 """
 
 
+from re import L
+from smtplib import LMTP_PORT
 import sys
 import requests
 import logicmonitor_sdk
@@ -34,14 +36,45 @@ from os import path
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS, cross_origin
 
+from azure.keyvault.secrets import SecretClient
+from azure.identity import DefaultAzureCredential
+
+
+
 app = Flask(__name__)
 CORS(app)
 
+# Set up logging
+loghandler = logging.StreamHandler(stream=sys.stdout)
+logger = logging.getLogger('azure')
+logger.addHandler(loghandler)
+
 run_local = False
-DEBUG = False
-VERSION = '1.3.1'
+DEBUG = True
+VERSION = '1.3.10'
+
+# Set our logging level
+if DEBUG:
+	logger.setLevel(logging.DEBUG)
+else:
+	logger.setLevel(logging.INFO)
+
 
 CONFIGFILE = 'config.json'
+
+# global keyvault vals
+
+LM_ID = None
+LM_KEY = None
+CW_CLIENTID = None
+CW_USERNAME = None
+CW_PASSWORD = None
+CW_COMPANY = None
+CW_URL = None
+CW_DOMAIN = None
+CW_EPOINT = None
+
+api_instance = None
 
 LOGSEQUENCE = 0
 
@@ -63,13 +96,15 @@ def LogOutput(message, level = 0, debug = False):
     global LOGSEQUENCE
  
     if level == 0: # Informational
-        logging.info(f"[{LOGSEQUENCE:{0}{4}}] INFO: {message}")
+        logger.info(f"[{LOGSEQUENCE:{0}{4}}] INFO: {message}")
     elif level == 1: # Warning
-        logging.info(f"[{LOGSEQUENCE:{0}{4}}] WARN: {message}")
+        logger.info(f"[{LOGSEQUENCE:{0}{4}}] WARN: {message}")
     elif level == 2: # Error
-        logging.info(f"[{LOGSEQUENCE:{0}{4}}] ERR : {message}")
+        logger.info(f"[{LOGSEQUENCE:{0}{4}}] ERR : {message}")
     elif level == 3 and (debug or DEBUG): # Debug
-        logging.info(f"[{LOGSEQUENCE:{0}{4}}] DEBG: [{VERSION}]: {message}")
+        logger.info(f"[{LOGSEQUENCE:{0}{4}}] DEBG: [{VERSION}]: {message}")
+        
+LogOutput("\n\nPROGRAM STARTED - DEFINED LOGOUTPUT\n\n")
 
 @app.after_request
 def set_cache_control(response):
@@ -77,13 +112,10 @@ def set_cache_control(response):
     response.headers['Cache-Control'] = 'public, max-age=3600, stale-while-revalidate=2592000'
     return response
 
-# Configure API key authorization: LMv1
-lmconfig = logicmonitor_sdk.Configuration()
-lmconfig.company = 'align'
-lmconfig.access_id = '3sG44q9cJk7VD674EydM'
-lmconfig.access_key = '(=(+rHtgLSmqDCrq7r3Pev6T(=Q9_qDVyA8}_]p='
 
-api_instance = logicmonitor_sdk.LMApi(logicmonitor_sdk.ApiClient(lmconfig))
+
+# Configure API key authorization: LMv1
+
 
 group_settings = [
     ("_Collectors", lambda path: f"join(system.staticgroups,\",\") =~ \"{path}/\" && isCollectorDevice()", False),
@@ -158,45 +190,169 @@ def create_device_groups(parent_device_group, selected_groups):
             create_folder(api_instance, parent_device_group.id, name, query, enable_netflow)
             
 
-def create_location_folder(api_instance, parent_id, name, loc_id, loc_details):
+def create_location_folder(api_instance, parent_id, name):
     try:
         if check_if_group_exists(api_instance, parent_id, name):
             print(f"Group '{name}' already exists.")
             return
-
+        
         new_group = logicmonitor_sdk.DeviceGroup(
-            name=name, 
-            parent_id=parent_id, 
+                    name=name, 
+                    parent_id=parent_id, 
         )
         api_response = api_instance.add_device_group(new_group)
-        location_id = api_response.id
+        location_group_id = api_response.id
 
-        # Find the correct location details using loc_id
-        detail = next((item for item in loc_details if str(item['id']) == str(loc_id)), None)
+        # api_instance.add_device_group_property(location_group_id, )
+
+        # Create sub-groups within the location group
+        sub_groups = ["Network", "Power", "Services"]
+        for sub_group_name in sub_groups:
+            api_instance.add_device_group(logicmonitor_sdk.DeviceGroup(name=sub_group_name, parent_id=location_group_id))
+            print(f"Created sub-group '{sub_group_name}' under '{name}'")
+        return {"status": "success", "message": f"Location '{name}' and its sub-groups created successfully."}
         
-        if detail:
-            loc_id_prop = logicmonitor_sdk.models.EntityProperty(
-                name="connectwisev2.locationid",
-                value=loc_id
-            )
-            full_address_prop = logicmonitor_sdk.models.EntityProperty(
-                name="Location",
-                value=f"{detail['address']} {detail['city']}, {detail['state']}"
-            )
-
-            # Add properties to the group
-            api_instance.add_device_group_property(location_id, loc_id_prop)
-            api_instance.add_device_group_property(location_id, full_address_prop)
-
-            # Add any additional logic for sub-groups here
-            print(f"Location '{name}' and its properties set successfully.")
-
     except ApiException as e:
-        print(f"Exception when calling add_device_group: {e}")
+        print("Exception when calling add_device_group: %s\n" % e)
 
-
-      
+@app.route('/')
+def serve_html_page():
+    
+    LogOutput("\n\nENTERED ENTRY POINT\n\n")
+    
+    # Open the config file
+    if path.exists('config.json'):
+        LogOutput("\n\nPATH EXISTS")
+        CONFIGDATA = json.load(open('config.json'))
+    else:
+        CONFIGDATA = None
         
+    AKV_VAL = GetConfigValue(CONFIGDATA, 'AzureKeyVault', None)
+        
+    LogOutput(f'\n\nAZUREKEYVAULT FROM CONFIGDATA: {AKV_VAL}')
+    
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+    
+    AKV_VAL2 = config['AzureKeyVault']
+    
+    LogOutput(f'\n\nAZUREKEYVAULT NOT USING GETCONFIGVALUE: {AKV_VAL2}')
+ 
+    global DEBUG
+    DEBUG = GetConfigValue(CONFIGDATA,'DEBUG',default=False)
+    
+    url = "http://127.0.0.1:5001" if run_local else GetConfigValue(CONFIGDATA, 'URL', default = "https://lmnewclient-dev.azurewebsites.net")
+    
+    html_path = "index.html"
+    
+        # Put the banner out there
+    LogOutput( """
+    -= LMNewClient =-
+    DEBUG      : %r
+    PRODUCTION : %r
+    CONFIG     : %r
+    VERSION    : %s""" % (DEBUG, run_local, CONFIGFILE, VERSION) )
+ 
+    LogOutput(f"CONFIGDATA: {CONFIGDATA}",3)
+    
+    # Set up for the interwebs
+    logging.info("Setting up communication...")
+    requests.packages.urllib3.disable_warnings() # unsigned SSL is OK
+    session = requests.Session()
+    
+    # Setting keyvault vals
+
+    # Connect to Key Vault
+    LogOutput("Getting access to keys...")
+    AZUREKEYVAULT = GetConfigValue(CONFIGDATA,'AzureKeyVault')
+    
+    LogOutput(f'\n\nAZUREKEYVAULT: {AZUREKEYVAULT}', 3)
+
+    if AZUREKEYVAULT:
+        KV_URL    = f"https://{AZUREKEYVAULT}.vault.azure.net"
+        KV_CLIENT = SecretClient(vault_url=KV_URL, credential=DefaultAzureCredential())
+    else:
+        KV_URL    = None    
+        KV_CLIENT = None
+        
+    LogOutput(f'\n\nKV_URL: {KV_URL} - - - KV_CLIENT: {KV_CLIENT}', 3)
+    
+    global CW_DOMAIN
+    global CW_EPOINT
+    global CW_COMPANY
+       
+    # key vault api parameters
+    LogOutput("Setting up for ConnectWise...")
+    CW_DOMAIN           = GetConfigValue(CONFIGDATA,'ConnectWise','domain','https://api-na.myconnectwise.net')
+    CW_EPOINT           = GetConfigValue(CONFIGDATA,'ConnectWise','apiVersion','/v4_6_release/apis/3.0')
+    CW_COMPANY		  = GetConfigValue(CONFIGDATA,'ConnectWise','company','align')
+    CW_CLIENTIDSECRET   = GetConfigValue(CONFIGDATA,'ConnectWise','clientId-secret')
+    CW_USERNAMESECRET  = GetConfigValue(CONFIGDATA,'ConnectWise','username-secret')
+    CW_PASSWORDSECRET = GetConfigValue(CONFIGDATA,'ConnectWise','password-secret')
+    LM_IDSECRET = GetConfigValue(CONFIGDATA, 'LogicMonitor', 'access_id-secret')
+    LM_KEYSECRET = GetConfigValue(CONFIGDATA, 'LogicMonitor', 'access_key-secret')
+        
+    global CW_URL
+    CW_URL = f'{CW_DOMAIN}{CW_EPOINT}'
+
+    global CW_CLIENTID
+    CW_CLIENTID         = None
+    global CW_USERNAME
+    CW_USERNAME        = None
+    global CW_PASSWORD
+    CW_PASSWORD       = None
+    global LM_ID
+    LM_ID = None
+    global LM_KEY
+    LM_KEY = None
+    
+    if KV_CLIENT:
+        if CW_CLIENTIDSECRET:
+            CW_CLIENTID = KV_CLIENT.get_secret(CW_CLIENTIDSECRET).value
+        if CW_USERNAMESECRET:
+            CW_USERNAME = KV_CLIENT.get_secret(CW_USERNAMESECRET).value
+        if CW_PASSWORDSECRET:
+            CW_PASSWORD = KV_CLIENT.get_secret(CW_PASSWORDSECRET).value
+        if LM_IDSECRET:
+            LM_ID = KV_CLIENT.get_secret(LM_IDSECRET)
+        if LM_KEYSECRET:
+            LM_KEY = KV_CLIENT.get_secret(LM_KEYSECRET)
+ 
+    if not CW_CLIENTID:
+        CW_CLIENTID   = GetConfigValue(CONFIGDATA,'ConnectWise','clientid')
+    if not CW_USERNAME:
+        CW_USERNAME  = GetConfigValue(CONFIGDATA,'ConnectWise','username')
+    if not CW_PASSWORD:
+        CW_PASSWORD = GetConfigValue(CONFIGDATA,'ConnectWise','password')
+    if not LM_ID:
+        LM_ID = GetConfigValue(CONFIGDATA, 'LogicMonitor', 'access_id')
+    if not LM_KEY:
+        LM_KEY = GetConfigValue(CONFIGDATA, 'LogicMonitor', 'access_key')
+            
+    LogOutput("setting up logic monitor")
+        
+    lmconfig = logicmonitor_sdk.Configuration()
+    lmconfig.company = GetConfigValue(CONFIGDATA, 'LogicMonitor', 'company')
+    lmconfig.access_id = LM_ID
+    lmconfig.access_key = LM_KEY
+
+    global api_instance
+    api_instance = logicmonitor_sdk.LMApi(logicmonitor_sdk.ApiClient(lmconfig))
+            
+
+    LogOutput(f'\n\nCW CREDENTIALS: {CW_USERNAME} - {CW_PASSWORD} - {CW_CLIENTID}\n\n', 3)
+
+    
+
+    # LOADING HTML
+
+    with open(html_path, 'r') as file:
+        html_var = file.read()
+    html_var = html_var.replace("{{ url }}", url)  # Assuming you'll place {{ url }} in your HTML where the URL should go
+    return render_template_string(html_var)
+
+    
+
 @app.route('/create-client-folder', methods=['POST'])
 @cross_origin()
 def create_client_folder_route():
@@ -255,7 +411,7 @@ def create_client_folder_route():
             for location in selected_locations:
                 # Assuming create_location_folder takes the name of the location as a parameter
                 # Adjust this call as necessary based on your function's parameters
-                create_location_folder(api_instance, parent_id, location, loc_details)
+                create_location_folder(api_instance, parent_id, location)
 
         return jsonify({'status': 'success', 'message': f'Client folder {client_name} created with selected groups and locations.'})
     except Exception as e:
@@ -264,23 +420,33 @@ def create_client_folder_route():
 
 @app.route('/get-locations', methods=['GET'])
 def get_locations():
+    
+    LogOutput("\n\nGET LOCATIONS\n\n")
+
     client_id = request.args.get('clientId')  # Get clientId from query parameters
     if not client_id:
         return jsonify({'error': 'Client ID is required'}), 400
-
+    
     # ConnectWise API URL for fetching locations
     url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies/{client_id}/sites?fields=id,name,city,stateReference/identifier,country/name&conditions=inactiveFlag=false'
-
-    # Replace 'username' and 'password' with your ConnectWise credentials
     username = 'align+r7wyECnfZ3BaZXtd'
-    password = 'bEpKrPNKppqOApnP'
-    credentials = base64.b64encode(f"{username}:{password}".encode()).decode('utf-8')
+    password = 'bEpKrPNKppqOApnP'    
+
+    credentials = base64.b64encode(f"align+{username}:{password}".encode('utf-8')).decode('utf-8')
+    
+    LogOutput(f'\n\n{CW_DOMAIN} - {CW_EPOINT}\n\n')
+    LogOutput(f'\n\n{url}\n\n')
 
     headers = {
         'Authorization': f'Basic {credentials}',
         'clientId': '8acd3927-2171-4fd9-8ebb-c88c7d387d56'
         # Add any other necessary headers here
     }
+    
+    LogOutput(f'\n\nCREDENTIALS: {CW_USERNAME} - {CW_PASSWORD} - {CW_CLIENTID}\n\n')
+
+    LogOutput(f"\n\nRequest URL: {url}")
+    LogOutput(f"\n\nHeaders: {headers}")
 
     # Make the request to ConnectWise
     response = requests.get(url, headers=headers)
@@ -295,12 +461,17 @@ def get_locations():
 
 @app.route('/get-companies', methods=['GET'])
 def get_companies():
-    api_url = 'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
     
-    # Encode your username and password in Base64
+    LogOutput("\n\nGET COMPANIES\n\n")
+    
+    LogOutput(f'\\nCW_COMPANY: {CW_COMPANY}')
+    
+    api_url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
+    
     username = 'align+r7wyECnfZ3BaZXtd'
     password = 'bEpKrPNKppqOApnP'
-    credentials = base64.b64encode(f"{username}:{password}".encode('utf-8')).decode('utf-8')
+    
+    credentials = base64.b64encode(f"align+{username}:{password}".encode('utf-8')).decode('utf-8')
     
     headers = {
         'Authorization': f'Basic {credentials}',
@@ -319,53 +490,6 @@ def get_companies():
 
 # if __name__ == '__main__':
 #   app.run(debug=True, port=5001)
-    
-
-@app.route('/')
-def serve_html_page():
-    
-    # Open the config file
-    if path.exists(CONFIGFILE):
-        CONFIGDATA = json.load(open(CONFIGFILE))
-    else:
-        CONFIGDATA = None
- 
-    global DEBUG
-    DEBUG = GetConfigValue(CONFIGDATA,'DEBUG',default=False)
-    
-    url = "http://127.0.0.1:5001" if run_local else GetConfigValue(CONFIGDATA, 'URL', default = "https://lmnewclient-dev.azurewebsites.net")
-    
-    html_path = "index.html"
-    
-        # Put the banner out there
-    LogOutput( """
-    -= LMNewClient =-
-    DEBUG      : %r
-    PRODUCTION : %r
-    CONFIG     : %r
-    VERSION    : %s""" % (DEBUG, run_local, CONFIGFILE, VERSION) )
- 
-    LogOutput( f"CONFIGDATA: {CONFIGDATA}",3)
-    
-    # Set up for the interwebs
-    logging.info("Setting up communication...")
-    requests.packages.urllib3.disable_warnings() # unsigned SSL is OK
-    session = requests.Session()
-
-    # Connect to Key Vault
-  #  LogOutput("Getting access to keys...")
-  #  AZUREKEYVAULT = GetConfigValue(CONFIGDATA,'AzureKeyVault')
-  # if AZUREKEYVAULT:
-  #     KV_URL    = f"https://{AZUREKEYVAULT}.vault.azure.net"
-  #     KV_CLIENT = SecretClient(vault_url=KV_URL, credential=DefaultAzureCredential())
-  # else:
-  #     KV_URL    = None    
-  #     KV_CLIENT = None
-
-    with open(html_path, 'r') as file:
-        html_var = file.read()
-    html_var = html_var.replace("{{ url }}", url)  # Assuming you'll place {{ url }} in your HTML where the URL should go
-    return render_template_string(html_var)
 
 
 if __name__ == '__main__' and run_local:
@@ -375,9 +499,7 @@ if __name__ == '__main__' and run_local:
     # return HTML output (html_var), status code (200)
 
 # read in HTML file in main
-# 
+
 
 # add locationid and address from connectwise to location folder properties
-# make config file (example is in downloads)
 # fix location properties
-# do author stuff at the top
