@@ -133,17 +133,7 @@ def create_location_folder(api_instance, parent_id, name):
         api_instance.add_device_group_property(location_id, location_id)
 
         # Create sub-groups within the location group
-        sub_groups = ["Network", "Power", "Services"]
-
-    
-          
-            
-    
-
-          
-          Expand Down
-    
-    
+        sub_groups = ["Network", "Power", "Services"]    
   
         for sub_group_name in sub_groups:
             api_instance.add_device_group(logicmonitor_sdk.DeviceGroup(name=sub_group_name, parent_id=location_id))
