@@ -420,33 +420,23 @@ def create_client_folder_route():
 
 @app.route('/get-locations', methods=['GET'])
 def get_locations():
-    
-    LogOutput("\n\nGET LOCATIONS\n\n")
-
     client_id = request.args.get('clientId')  # Get clientId from query parameters
     if not client_id:
         return jsonify({'error': 'Client ID is required'}), 400
-    
+
     # ConnectWise API URL for fetching locations
     url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies/{client_id}/sites?fields=id,name,city,stateReference/identifier,country/name&conditions=inactiveFlag=false'
-    username = 'align+r7wyECnfZ3BaZXtd'
-    password = 'bEpKrPNKppqOApnP'    
 
-    credentials = base64.b64encode(f"align+{username}:{password}".encode('utf-8')).decode('utf-8')
-    
-    LogOutput(f'\n\n{CW_DOMAIN} - {CW_EPOINT}\n\n')
-    LogOutput(f'\n\n{url}\n\n')
+    # Replace 'username' and 'password' with your ConnectWise credentials
+    username = 'align+r7wyECnfZ3BaZXtd'
+    password = 'bEpKrPNKppqOApnP'
+    credentials = base64.b64encode(f"{username}:{password}".encode()).decode('utf-8')
 
     headers = {
         'Authorization': f'Basic {credentials}',
         'clientId': '8acd3927-2171-4fd9-8ebb-c88c7d387d56'
         # Add any other necessary headers here
     }
-    
-    LogOutput(f'\n\nCREDENTIALS: {CW_USERNAME} - {CW_PASSWORD} - {CW_CLIENTID}\n\n')
-
-    LogOutput(f"\n\nRequest URL: {url}")
-    LogOutput(f"\n\nHeaders: {headers}")
 
     # Make the request to ConnectWise
     response = requests.get(url, headers=headers)
@@ -461,17 +451,12 @@ def get_locations():
 
 @app.route('/get-companies', methods=['GET'])
 def get_companies():
+    api_url = 'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
     
-    LogOutput("\n\nGET COMPANIES\n\n")
-    
-    LogOutput(f'\\nCW_COMPANY: {CW_COMPANY}')
-    
-    api_url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
-    
+    # Encode your username and password in Base64
     username = 'align+r7wyECnfZ3BaZXtd'
     password = 'bEpKrPNKppqOApnP'
-    
-    credentials = base64.b64encode(f"align+{username}:{password}".encode('utf-8')).decode('utf-8')
+    credentials = base64.b64encode(f"{username}:{password}".encode('utf-8')).decode('utf-8')
     
     headers = {
         'Authorization': f'Basic {credentials}',
