@@ -51,7 +51,7 @@ logger.addHandler(loghandler)
 
 run_local = False
 DEBUG = True
-VERSION = '1.3.10'
+VERSION = '1.3.14'
 
 # Set our logging level
 if DEBUG:
@@ -446,7 +446,6 @@ def get_locations():
     else:
         # Forward any errors from the ConnectWise API
         return jsonify({'error': 'Failed to fetch locations', 'details': response.text}), response.status_code
-
 
 
 @app.route('/get-companies', methods=['GET'])
