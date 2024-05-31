@@ -3,6 +3,7 @@
   "PRODUCTION": false,
   "URL": "https://lmnewclient-dev.azurewebsites.net",
   "AzureKeyVault": "lmnewclient",
+  "IPs Allowed": [ "73.142.224.202" ],
   "LogicMonitor": {
     "company": "align",
     "access_id-secret": "LM-RW-ID",
@@ -14,7 +15,7 @@
     "clientId-secret": "CW-CLIENTID",
     "username-secret": "CW-USERNAME",
     "password-secret": "CW-PASSWORD",
-    "company":  "align"
+    "company": "align"
   }
 }
 
