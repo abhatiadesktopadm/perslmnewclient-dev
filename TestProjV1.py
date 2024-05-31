@@ -423,31 +423,24 @@ def get_locations():
     client_id = request.args.get('clientId')  # Get clientId from query parameters
     if not client_id:
         return jsonify({'error': 'Client ID is required'}), 400
-
     # ConnectWise API URL for fetching locations
     url = f'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies/{client_id}/sites?fields=id,name,city,stateReference/identifier,country/name&conditions=inactiveFlag=false'
-
     # Replace 'username' and 'password' with your ConnectWise credentials
     username = 'align+r7wyECnfZ3BaZXtd'
     password = 'bEpKrPNKppqOApnP'
     credentials = base64.b64encode(f"{username}:{password}".encode()).decode('utf-8')
-
     headers = {
         'Authorization': f'Basic {credentials}',
         'clientId': '8acd3927-2171-4fd9-8ebb-c88c7d387d56'
         # Add any other necessary headers here
     }
-
     # Make the request to ConnectWise
     response = requests.get(url, headers=headers)
-
     if response.status_code == 200:
         return jsonify(response.json()), 200
     else:
         # Forward any errors from the ConnectWise API
         return jsonify({'error': 'Failed to fetch locations', 'details': response.text}), response.status_code
-
-
 @app.route('/get-companies', methods=['GET'])
 def get_companies():
     api_url = 'https://api-na.myconnectwise.net/v4_6_release/apis/3.0/company/companies?fields=id,identifier,name&orderBy=name asc&pageSize=1000&childConditions=types/name="Client"&conditions=status/name="Active"'
@@ -470,10 +463,7 @@ def get_companies():
         else:
             return jsonify({'error': 'Failed to fetch companies'}), response.status_code
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# if __name__ == '__main__':
-#   app.run(debug=True, port=5001)
+        return jsonify({'error': str(e)}), 50
 
 
 if __name__ == '__main__' and run_local:
@@ -481,8 +471,6 @@ if __name__ == '__main__' and run_local:
   
     # read file, store in variable (html_var)
     # return HTML output (html_var), status code (200)
-
-# read in HTML file in main
 
 
 # add locationid and address from connectwise to location folder properties
